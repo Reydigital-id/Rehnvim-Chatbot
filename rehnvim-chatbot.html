@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Rehnvim AI Assistant</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .chat-app {
+    width: 420px;
+    height: 640px;
+    background: #0f1117;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #2a2d3a;
+  }
+  .header {
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header .logo {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .header .title { color: white; font-weight: 600; font-size: 15px; }
+  .header .subtitle { color: rgba(255,255,255,0.8); font-size: 11px; }
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .messages::-webkit-scrollbar { width: 6px; }
+  .messages::-webkit-scrollbar-thumb { background: #3a3d4a; border-radius: 3px; }
+  .msg {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+  }
+  .msg.bot {
+    background: #1e2130;
+    color: #e6e6f0;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+  }
+  .msg.user {
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+  }
+  .typing {
+    align-self: flex-start;
+    color: #8888a0;
+    font-size: 13px;
+    padding: 4px 14px;
+    font-style: italic;
+  }
+  .quick-replies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 16px 10px;
+  }
+  .quick-replies button {
+    background: #1e2130;
+    border: 1px solid #3a3d4a;
+    color: #c9c9e0;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .quick-replies button:hover {
+    background: #6c5ce7;
+    color: white;
+    border-color: #6c5ce7;
+  }
+  .input-bar {
+    display: flex;
+    padding: 12px;
+    gap: 8px;
+    border-top: 1px solid #2a2d3a;
+    background: #0f1117;
+  }
+  .input-bar input {
+    flex: 1;
+    background: #1e2130;
+    border: 1px solid #3a3d4a;
+    border-radius: 20px;
+    padding: 10px 16px;
+    color: white;
+    font-size: 14px;
+    outline: none;
+  }
+  .input-bar input:focus { border-color: #6c5ce7; }
+  .input-bar button {
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    border: none;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .input-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<div class="chat-app">
+  <div class="header">
+    <div class="logo">🎬</div>
+    <div>
+      <div class="title">Rehnvim AI Assistant</div>
+      <div class="subtitle">Video Editing • Social Media • Poster Design</div>
+    </div>
+  </div>
+
+  <div class="messages" id="messages"></div>
+  <div class="quick-replies" id="quickReplies"></div>
+
+  <div class="input-bar">
+    <input type="text" id="userInput" placeholder="Tulis pesan Kakak di sini...">
+    <button id="sendBtn" onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+<script>
+const SYSTEM_PROMPT = `Kamu adalah Rehnvim AI, customer service resmi dari Rehnvim, sebuah creative studio yang menyediakan jasa Video Editing, Social Media Design, dan Poster Design.
+
+Tugas utamamu adalah membantu calon customer dengan ramah, profesional, cepat, dan persuasif. Kamu bukan hanya menjawab pertanyaan, tetapi juga membantu customer menemukan solusi terbaik sesuai kebutuhannya.
+
+Kepribadian:
+- Ramah dan sopan.
+- Profesional namun tetap santai.
+- Mudah dipahami.
+- Tidak menggunakan bahasa yang terlalu formal.
+- Selalu berusaha membuat customer nyaman bertanya.
+- Tidak memaksa customer membeli.
+
+Gaya Berbicara:
+- Gunakan Bahasa Indonesia secara default.
+- Jika customer menggunakan Bahasa Inggris, balas dengan Bahasa Inggris.
+- Jawaban singkat namun informatif.
+- Hindari jawaban terlalu panjang kecuali customer meminta penjelasan lebih detail.
+- Gunakan emoji secukupnya (✨🎬📱🎨).
+
+Tentang Rehnvim:
+Rehnvim adalah creative studio yang fokus membantu personal brand, UMKM, perusahaan, content creator, sekolah, hingga organisasi dalam membuat konten visual yang profesional.
+
+Layanan utama:
+1. Video Editing: Instagram Reels, TikTok, YouTube Shorts, YouTube Long Form, Company Profile, Video Promosi, Video Event, Podcast, Video Edukasi, Video Presentasi, Motion Graphic sederhana, Subtitle/Caption, Color Correction, Sound Enhancement, Highlight Video.
+2. Social Media Design: Feed Instagram, Carousel, Story Instagram, Thumbnail YouTube, Banner, Konten Promosi, Template Konten, Branding Visual.
+3. Poster Design: Poster Event, Poster Seminar, Poster Promosi, Flyer, Brosur, Banner Digital, Poster Sekolah, Poster Organisasi.
+
+Cara Menjawab pertanyaan harga: jelaskan bahwa harga bergantung kebutuhan (durasi video, tingkat kesulitan editing, jumlah revisi, jenis desain), lalu tanyakan detail kebutuhan.
+
+Waktu pengerjaan: Desain sederhana 1-2 hari, Desain kompleks 2-5 hari, Video pendek 2-4 hari, Video panjang menyesuaikan durasi dan tingkat editing. Tanyakan deadline customer.
+
+Revisi: selalu bisa, sesuai kesepakatan di awal.
+
+Software: Adobe Premiere Pro, After Effects, Photoshop, Illustrator, CapCut Pro, dan software pendukung lain.
+
+Referensi: customer sangat disarankan kirim referensi/contoh agar hasil lebih sesuai ekspektasi.
+
+Jika customer belum tahu ingin buat apa: tanyakan bisnis/akun yang ingin dikembangkan, lalu bantu rekomendasikan.
+
+Jika customer bingung: ajukan pertanyaan satu per satu (Editing Video / Desain Social Media / Poster / Belum yakin).
+
+Jika pertanyaan di luar jasa tapi pengetahuan umum: tetap jawab sederhana. Jika sama sekali tidak relevan, jawab baik-baik tanpa mengarang info.
+
+Saran editing: hook kuat 3 detik pertama, subtitle jelas, transisi tidak berlebihan, musik sesuai emosi video, color grading konsisten, CTA di akhir.
+
+Saran desain: maksimal 2-3 font, warna sesuai brand, jangan terlalu banyak teks, fokus hierarki visual, gunakan whitespace.
+
+Algoritma sosial media: jawab sesuai praktik terbaik, jelaskan algoritma terus berubah, tidak ada jaminan pasti viral.
+
+Tujuan utama: setelah menjawab, arahkan percakapan secara alami ke konsultasi gratis atau rekomendasi layanan, tanpa memaksa.
+
+Hindari: memaksa membeli, harga tidak pasti, mengarang info, berdebat, jawaban kasar, bahasa terlalu kaku, emoji berlebihan.
+
+Selalu: pahami kebutuhan -> jawab jelas -> beri solusi relevan -> tanya lanjutan jika perlu -> arahkan halus ke konsultasi/pemesanan.`;
+
+let conversationHistory = [];
+
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+const quickRepliesEl = document.getElementById('quickReplies');
+
+function addMessage(role, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+  div.textContent = text;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function showTyping() {
+  const div = document.createElement('div');
+  div.className = 'typing';
+  div.id = 'typingIndicator';
+  div.textContent = 'Rehnvim AI sedang mengetik...';
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+function setQuickReplies(options) {
+  quickRepliesEl.innerHTML = '';
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.textContent = opt;
+    btn.onclick = () => {
+      inputEl.value = opt;
+      sendMessage();
+    };
+    quickRepliesEl.appendChild(btn);
+  });
+}
+
+async function callClaude(userText) {
+  conversationHistory.push({ role: 'user', content: userText });
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      system: SYSTEM_PROMPT,
+      messages: conversationHistory
+    })
+  });
+
+  const data = await response.json();
+  const text = data.content
+    .filter(b => b.type === 'text')
+    .map(b => b.text)
+    .join('\n');
+
+  conversationHistory.push({ role: 'assistant', content: text });
+  return text;
+}
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text) return;
+
+  addMessage('user', text);
+  inputEl.value = '';
+  quickRepliesEl.innerHTML = '';
+  sendBtn.disabled = true;
+  showTyping();
+
+  try {
+    const reply = await callClaude(text);
+    hideTyping();
+    addMessage('bot', reply);
+  } catch (err) {
+    hideTyping();
+    addMessage('bot', 'Maaf Kak, terjadi kendala teknis 🙏 Boleh dicoba kirim pesan lagi?');
+    console.error(err);
+  }
+
+  sendBtn.disabled = false;
+  inputEl.focus();
+}
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+// Initial greeting
+window.addEventListener('load', () => {
+  addMessage('bot', 'Halo Kak! 👋 Selamat datang di Rehnvim ✨\n\nKami siap bantu kebutuhan Video Editing, Social Media Design, dan Poster Design Kakak.\n\nAda yang bisa saya bantu hari ini? 😊');
+  setQuickReplies(['Editing Video', 'Desain Social Media', 'Poster', 'Belum yakin']);
+  conversationHistory.push({ role: 'user', content: '(sistem: ucapkan salam pembuka)' });
+  conversationHistory.push({ role: 'assistant', content: 'Halo Kak! 👋 Selamat datang di Rehnvim ✨ Kami siap bantu kebutuhan Video Editing, Social Media Design, dan Poster Design Kakak. Ada yang bisa saya bantu hari ini? 😊' });
+});
+</script>
+
+</body>
+</html>
